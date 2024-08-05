@@ -1,163 +1,144 @@
-#include<bits/stdc++.h>
-// Header Files End
-
+#include <iostream>
+#include <vector>
+#include <unordered_map>
 using namespace std;
 
-
-class Item{
-
-    string name;
-    bool isImported;
-    string category;
-    float price;
+class Board {
+private:
+    vector<vector<char>> board;
 
 public:
-
-    Item(string name,bool imported,string category,float price){
-        this->name=name;
-        this->isImported=imported;
-        this->category=category;
-        this->price=price;
+    void generateBoard(int n) {
+        board.resize(n, vector<char>(n, '-'));
     }
 
-    string getName(){
-        return name;
+    void printBoard() const {
+        for (const auto& row : board) {
+            for (const auto& cell : row) {
+                cout << cell << " |";
+            }
+            cout << endl;
+        }
     }
 
-    float getPrice(){
-        return price;
+    bool isCellEmpty(int row, int col) const {
+        return board[row][col] == '-';
     }
 
-    string getCategory(){
-        return category;
+    void makeMove(int row, int col, char symbol) {
+        board[row][col] = symbol;
     }
 
-
-    bool imported(){
-        return isImported;
+    char getCell(int row, int col) const {
+        return board[row][col];
     }
 
-    // setters can also be declared but not needed here
-
+    int getSize() const {
+        return board.size();
+    }
 };
 
-class BilledItem{
+class Game {
+private:
+    string user1_id;
+    string user2_id;
+    Board currBoard;
+    vector<pair<int, int>> player1_moves, player2_moves;
+    unordered_map<int, int> zeroes_in_rows, zeroes_in_cols;
+    int zeroes_in_diagonal1 = 0, zeroes_in_diagonal2 = 0;
+    unordered_map<int, int> crosses_in_rows, crosses_in_cols;
+    int crosses_in_diagonal1 = 0, crosses_in_diagonal2 = 0;
+    int winner = -1;
+    int size;
+
+    bool checkWinner(int row, int col, char symbol) {
+        int required = size;
+        if (symbol == '0') {
+            if (zeroes_in_rows[row] == required || zeroes_in_cols[col] == required ||
+                (row == col && zeroes_in_diagonal1 == required) ||
+                (row + col == size - 1 && zeroes_in_diagonal2 == required)) {
+                return true;
+            }
+        } else {
+            if (crosses_in_rows[row] == required || crosses_in_cols[col] == required ||
+                (row == col && crosses_in_diagonal1 == required) ||
+                (row + col == size - 1 && crosses_in_diagonal2 == required)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
 public:
-
-    string name;
-    int quantity;
-    float totalPrice;
-};
-class GenerateInvoice{
-
-    float salesTaxPercentage=10.0;
-    float importedTaxPercentage=5.0;
-
-    map<string,bool> salesTaxNotApplicable;
-
-
-public:
-
-    GenerateInvoice(){
-        salesTaxNotApplicable["books"]=true;
-        salesTaxNotApplicable["medical"]=true;
-        salesTaxNotApplicable["food"]=true;
+    Game(string user1_id, string user2_id, int size) 
+        : user1_id(user1_id), user2_id(user2_id), size(size), winner(-1) {
+        currBoard.generateBoard(size);
     }
 
-    float calculateTotalItemPrice(Item currItem,int quantity){
-        return currItem.getPrice()*quantity;
-    }
+    void play() {
+        int currPlayer = 1;
+        int count_of_moves = 0;
+        while (count_of_moves < size * size && winner == -1) {
+            cout << "Player " << currPlayer << " move: ";
+            int currRow, currCol;
+            cin >> currRow >> currCol;
 
-    float calculateSalesTax(float itemTotal,string itemCategory){
+            while (!currBoard.isCellEmpty(currRow, currCol)) {
+                cout << "Invalid Move. Try again." << endl;
+                cout << "Player " << currPlayer << " move: ";
+                cin >> currRow >> currCol;
+            }
 
-        if(salesTaxNotApplicable[itemCategory]==true)return 0.0;
+            char symbol = (currPlayer == 1) ? '0' : 'x';
+            currBoard.makeMove(currRow, currCol, symbol);
 
-        float salesTax=(salesTaxPercentage*itemTotal)/100.00;
+            if (currPlayer == 1) {
+                player1_moves.emplace_back(currRow, currCol);
+                zeroes_in_cols[currCol]++;
+                zeroes_in_rows[currRow]++;
+                if (currRow == currCol) zeroes_in_diagonal1++;
+                if (currRow + currCol == size - 1) zeroes_in_diagonal2++;
+            } else {
+                player2_moves.emplace_back(currRow, currCol);
+                crosses_in_cols[currCol]++;
+                crosses_in_rows[currRow]++;
+                if (currRow == currCol) crosses_in_diagonal1++;
+                if (currRow + currCol == size - 1) crosses_in_diagonal2++;
+            }
 
-        return salesTax;
-    }
+            currBoard.printBoard();
 
-    float calculateImportTax(float itemTotal,bool isImported){
+            if (checkWinner(currRow, currCol, symbol)) {
+                winner = currPlayer;
+            }
 
-        if(isImported==false)return 0.0;
-
-        float importTax=(importedTaxPercentage*itemTotal)/100.00;
-
-        return importTax;
-
-    }
-
-    void printInvoice(vector<BilledItem> allBilledItems,float totalSalesTax,float totalImportTax){
-
-        cout<<"Item Name  "<<" Quantity  "<<"TotalPrice"<<endl;
-
-        float nettPrice=0.0;
-
-        for(int i=0;i<allBilledItems.size();i++){
-            
-            cout<<allBilledItems[i].name<<"        "<<allBilledItems[i].quantity<<"          "<<allBilledItems[i].totalPrice<<endl;
-            nettPrice+=allBilledItems[i].totalPrice;
+            currPlayer = (currPlayer == 1) ? 2 : 1;
+            count_of_moves++;
         }
 
-        cout<<"\nTotal Sales Tax: "<<totalSalesTax<<endl;
-        cout<<"Total Import Tax: "<<totalImportTax<<endl;
-
-        nettPrice+=totalSalesTax+totalImportTax;
-
-        cout<<"Nett Price: "<<nettPrice<<endl;
-    }
-
-    void generateBill(vector<pair<Item,int>> items){
-
-        vector<BilledItem> allBilledItems;
-
-        float totalSalesTax=0.0;
-        float totalImportTax=0.0;
-
-        for(int i=0;i<items.size();i++){
-
-            BilledItem currItem;
-            currItem.name=items[i].first.getName();
-            currItem.quantity=items[i].second;
-
-            currItem.totalPrice=calculateTotalItemPrice(items[i].first,items[i].second);
-
-            allBilledItems.push_back(currItem);
-
-            totalSalesTax+=calculateSalesTax(currItem.totalPrice,items[i].first.getCategory());
-
-            totalImportTax+=calculateImportTax(currItem.totalPrice,items[i].first.imported());
+        if (winner == -1) {
+            cout << "Game is drawn" << endl;
+        } else {
+            cout << "Winner of the game is: Player " << winner << endl;
         }
-
-        printInvoice(allBilledItems,totalSalesTax,totalImportTax);
     }
 };
 
+class User {
+private:
+    string user_id;
+    string user_name;
+    int total_wins = 0;
+    int total_losses = 0;
+    int total_draws = 0;
+    vector<Game> past_games;
 
+public:
+    // Add getters, setters, and other methods to manage user statistics and games.
+};
 
-int main(){
-
-    int totalItemsBought;
-    cin>>totalItemsBought;
-
-    vector<pair<Item,int>> allItems;
-
-    for(int i=0;i<totalItemsBought;i++){
-         
-        string name,category;
-        int imported,quantity;
-        float price;
-        cin>>name>>price>>imported>>category>>quantity;
-
-        Item currItem(name,imported,category,price);
-
-        allItems.push_back({currItem,quantity});
-
-    }
-
-    GenerateInvoice invoice;
-
-    invoice.generateBill(allItems);
-    
+int main() {
+    Game game("user1", "user2", 3);
+    game.play();
+    return 0;
 }
